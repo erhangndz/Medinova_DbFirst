@@ -1,4 +1,8 @@
-﻿using Medinova.Models;
+﻿using Medinova.DTOs;
+using Medinova.Enums;
+using Medinova.Models;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 
@@ -25,6 +29,21 @@ namespace Medinova.Controllers
                                        Text = department.Name,
                                        Value = department.DepartmentId.ToString()
                                    }).ToList();
+            var dateList = new List<SelectListItem>();
+
+            for(int i = 0; i < 7; i++)
+            {
+                var date = DateTime.Now.AddDays(i);
+
+                dateList.Add(new SelectListItem
+                {
+                    Text = date.ToString("dd.MMMM.dddd"),
+                    Value = date.ToString("yyyy-MM-dd")
+                });
+            }
+
+            ViewBag.dateList = dateList;
+
             return PartialView();
         }
 
@@ -32,7 +51,7 @@ namespace Medinova.Controllers
         public ActionResult MakeAppointment(Appointment appointment)
         {
             
-
+            appointment.IsActive=true;
             context.Appointments.Add(appointment);
             context.SaveChanges();
             return RedirectToAction("Index");
@@ -50,5 +69,33 @@ namespace Medinova.Controllers
 
             return Json(doctors,JsonRequestBehavior.AllowGet);
         }
+
+        [HttpPost]
+        public JsonResult GetAvailableHours(DateTime selectedDate, int doctorId)
+        {
+            var bookedTimes = context.Appointments.Where(x => x.DoctorId == doctorId && x.AppointmentDate == selectedDate).Select(x=>x.AppointmentTime).ToList();
+
+            var dtoList = new List<AppointmentAvailabilityDto>();
+
+            foreach(var hour in Times.AppointmentHours)
+            {
+                var dto = new AppointmentAvailabilityDto();
+                dto.Time = hour;
+
+                if (bookedTimes.Contains(hour))
+                {
+                    dto.IsBooked = true;
+                }
+                else
+                {
+                    dto.IsBooked= false;
+                }
+
+                dtoList.Add(dto);
+            }
+
+            return Json(dtoList,JsonRequestBehavior.AllowGet);
+        }
+
     }
 }
